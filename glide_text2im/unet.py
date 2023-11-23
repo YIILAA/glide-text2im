@@ -237,7 +237,7 @@ class AttentionBlock(nn.Module):
             self.encoder_kv = conv_nd(1, encoder_channels, channels * 2, 1)
         self.proj_out = zero_module(conv_nd(1, channels, channels, 1))
 
-    def forward(self, x, encoder_out=None):
+    def forward(self, x, encoder_out=None): # encoder_out即condition，用于计算kv，实现基于cross-attention的引导？
         b, c, *spatial = x.shape
         qkv = self.qkv(self.norm(x).view(b, c, -1))
         if encoder_out is not None:
