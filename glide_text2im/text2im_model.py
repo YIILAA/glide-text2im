@@ -131,7 +131,7 @@ class Text2ImUNet(UNetModel):
             xf_out = None
         h = x.type(self.dtype)
         for module in self.input_blocks:
-            h = module(h, emb, xf_out)
+            h = module(h, emb, xf_out) # condition on xf_out
             hs.append(h)
         h = self.middle_block(h, emb, xf_out)
         for module in self.output_blocks:
