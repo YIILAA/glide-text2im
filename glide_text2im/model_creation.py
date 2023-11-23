@@ -148,6 +148,7 @@ def create_model(
     for res in attention_resolutions.split(","):
         attention_ds.append(image_size // int(res))
 
+    # 具体构建哪类模型
     if inpaint and super_res:
         model_cls = SuperResInpaintText2ImUnet
     elif inpaint:
