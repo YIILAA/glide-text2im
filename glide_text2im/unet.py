@@ -363,6 +363,7 @@ class UNetModel(nn.Module):
         if self.num_classes is not None:
             self.label_emb = nn.Embedding(num_classes, time_embed_dim)
 
+        # ============== input_blocks ==============
         ch = input_ch = int(channel_mult[0] * model_channels)
         self.input_blocks = nn.ModuleList(
             [TimestepEmbedSequential(conv_nd(dims, in_channels, ch, 3, padding=1))]
@@ -370,8 +371,8 @@ class UNetModel(nn.Module):
         self._feature_size = ch
         input_block_chans = [ch]
         ds = 1
-        for level, mult in enumerate(channel_mult):
-            for _ in range(num_res_blocks):
+        for level, mult in enumerate(channel_mult): # 每一层和其对应的channel_mult
+            for _ in range(num_res_blocks): # 每一层有num_res_blocks个ResBlock
                 layers = [
                     ResBlock(
                         ch,
@@ -384,6 +385,7 @@ class UNetModel(nn.Module):
                     )
                 ]
                 ch = int(mult * model_channels)
+                # 在指定层添加AttentionBlock
                 if ds in attention_resolutions:
                     layers.append(
                         AttentionBlock(
@@ -394,9 +396,12 @@ class UNetModel(nn.Module):
                             encoder_channels=encoder_channels,
                         )
                     )
+                # layers注入TimestepEmbed，完成一个ResBlock
                 self.input_blocks.append(TimestepEmbedSequential(*layers))
                 self._feature_size += ch
                 input_block_chans.append(ch)
+            
+            # 完成一个level里的n个ResBlock，如果不是最后一层，则进行下采样
             if level != len(channel_mult) - 1:
                 out_ch = ch
                 self.input_blocks.append(
@@ -411,8 +416,8 @@ class UNetModel(nn.Module):
                             use_scale_shift_norm=use_scale_shift_norm,
                             down=True,
                         )
-                        if resblock_updown
-                        else Downsample(ch, conv_resample, dims=dims, out_channels=out_ch)
+                        if resblock_updown # 如果使用ResBlock来实现上采样/下采样
+                        else Downsample(ch, conv_resample, dims=dims, out_channels=out_ch) # 普通上采样/下采样
                     )
                 )
                 ch = out_ch
@@ -420,6 +425,7 @@ class UNetModel(nn.Module):
                 ds *= 2
                 self._feature_size += ch
 
+        # ============== middle_block ==============
         self.middle_block = TimestepEmbedSequential(
             ResBlock(
                 ch,
@@ -447,6 +453,7 @@ class UNetModel(nn.Module):
         )
         self._feature_size += ch
 
+        # ============== output_blocks ==============
         self.output_blocks = nn.ModuleList([])
         for level, mult in list(enumerate(channel_mult))[::-1]:
             for i in range(num_res_blocks + 1):
